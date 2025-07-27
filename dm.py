@@ -16,7 +16,7 @@ df_trophies = pd.read_csv('european_football_soccer_clubs_on_google_SERPs.csv')
 # PREPROCESSING
 
 # Keep only the attributes I'm interested in, for each dataframe.
-df_matches = df_matches[['away coach', 'away goals', 'away name',
+df_matches = df_matches[['location', 'away coach', 'away goals', 'away name',
                          'date', 'home coach', 'home goals', 'home name',
                          'league', 'referee', 'season', 'stadium', 'visitor count']]
 df_leagues = df_leagues[['name', 'type', 'country_name']]
@@ -54,13 +54,13 @@ df_leagues['name'] = df_leagues['name'].apply(normalize_name)
 
 # Store the names of the leagues of the competitions database.
 league_names = df_leagues['name'].unique()
-# Define a function that, given a league (from matches), check for the most similar
-# league in the stored ones and returns the most accurate match only if it has a score > 85.
-def getBestMatch(league):
+# Define a function that, given a league (from matches), checks for the most similar
+# league in the stored ones and returns the most accurate match only if it has a score > 80.
+def getLeague(league):
     match, score, _ = process.extractOne(league, league_names)
     return match if score > 80 else None
 # Create a new column in the matches database with the matched league.
-df_matches['matched_league'] = df_matches['league'].str.lower().apply(getBestMatch)
+df_matches['matched_league'] = df_matches['league'].str.lower().apply(getLeague)
 
 # Merge using the normalized matched league name, then remove the useless columns.
 df1 = df_matches.merge(df_leagues, left_on='matched_league', right_on='name', how='left')
@@ -71,3 +71,49 @@ df1.drop(columns=['matched_league', 'name'], inplace=True)
 ##                                            PHASE 2: MERGE DF1 & STADIUMS                                             ##
 ##########################################################################################################################
 ##########################################################################################################################
+
+# Problem: when there are multiple matchings with the same exact name, it matches nothing.
+# To solve this problem I want to sort the stadiums dataset on the name of the stadium and
+# on the population. The idea is that two stadiums with the same name will be one next to the other
+# and the first one will be the one in the biggest country, which will likely be the needed one
+# since the database involves the top 5 leagues, I can also filter the dataset to keep only those
+# stadiums such that the country is one of the top 5, then keep only the first duplicate.
+top_countries = ['Italy', 'Spain', 'Germany', 'France', 'England']
+df_stadiums_sorted = df_stadiums.sort_values(by=['Stadium', 'Population'], ascending=[True, False])
+df_stadiums_sorted = df_stadiums_sorted[df_stadiums_sorted['Country'].isin(top_countries)]
+df_stadiums_unique = df_stadiums_sorted.drop_duplicates(subset='Stadium', keep='first')
+df_stadiums_unique = df_stadiums_unique[['Stadium', 'City', 'Capacity']]
+# Store the sorted names of the stadiums of the dedicated database.
+stadium_names = df_stadiums_unique['Stadium'].unique()
+
+# Define a function that, given a row (from df1), checks for the most similar
+# stadium in the stored ones and returns the most accurate match only if it has a score > 80.
+def getStadium(row):
+    # I want to get also the location because there are some comlex cases where I want to compare
+    # also the city to be sure of the matching.
+    stadium = row['stadium']
+    location = row['location']
+    if pd.isnull(stadium) or pd.isnull(location): return None
+    match, score, _ = process.extractOne(stadium, stadium_names, scorer = fuzz.partial_ratio)
+    if score < 65: return None
+    # If the score is greater compare also the city.
+    matched_row = df_stadiums_unique[df_stadiums_unique['Stadium'] == match]
+    matched_city = matched_row.iloc[0]['City']
+    city_score = fuzz.partial_ratio(str(location).lower(), str(matched_city).lower())
+    return match if city_score > 80 else None
+# Create a new column in the df1 merged database with the matched stadium.
+df1['matched_stadium'] = df1.apply(getStadium, axis=1)
+
+# Merge using the matched stadium, then remove the useless columns.
+df2 = df1.merge(df_stadiums_unique, left_on='matched_stadium', right_on='Stadium', how='left')
+df2.drop(columns=['location', 'stadium', 'Stadium'], inplace=True)
+# I want also to merge on the country to assign to each one the respective population.
+df_population = df_stadiums[['Country', 'Population']]
+df_population = df_population.drop_duplicates()
+df2 = df2.merge(df_population, left_on='country_name', right_on='Country', how='left')
+df2.drop(columns=['Country'], inplace=True)
+# I kept the matched stadium column and renamed it because stadium is an optional dimension,
+# but it makes no sense to me to keep a stadium without the additional information, so
+# the rows who had no match will also have no stadium at all.
+df2 = df2.rename(columns={'matched_stadium': 'stadium'})
+df2.to_csv('df2.csv', index=False)
