@@ -115,5 +115,8 @@ df2.drop(columns=['Country'], inplace=True)
 # I kept the matched stadium column and renamed it because stadium is an optional dimension,
 # but it makes no sense to me to keep a stadium without the additional information, so
 # the rows who had no match will also have no stadium at all.
-df2 = df2.rename(columns={'matched_stadium': 'stadium'})
-df2.to_csv('df2.csv', index=False)
+df2 = df2.rename(columns={'matched_stadium': 'stadium',
+                          'country_name': 'country',
+                          'City': 'city',
+                          'Capacity': 'capacity',
+                          'Population': 'population'})

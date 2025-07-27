@@ -1,4 +1,4 @@
-away coach,away goals,away name,date,home coach,home goals,home name,league,referee,season,visitor count,type,country_name,stadium,City,Capacity,Population
+away coach,away goals,away name,date,home coach,home goals,home name,league,referee,season,visitor count,type,country,stadium,city,capacity,population
 Gregorio Manzano,0.0,FC Malaga,28.08.2004,César Ferrando,2.0,Atletico Madrid,La Liga,Eduardo Ilturralde Gonzalez,2004/2005,40000.0,domestic_league,Spain,,,,46710000
 Lorenzo Serra Ferrer,1.0,Real Betis,28.08.2004,Francisco Lopez,1.0,CD Numancia,La Liga,Lizondo Cortés,2004/2005,9000.0,domestic_league,Spain,,,,46710000
 Javier Iruretagoyena,1.0,Deportivo La Coruna,28.08.2004,Miguel Angel Lotina,1.0,Espanyol Barcelona,La Liga,Amtonio Rubinos Perez,2004/2005,34100.0,domestic_league,Spain,,,,46710000
