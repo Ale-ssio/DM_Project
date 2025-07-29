@@ -29,16 +29,36 @@ df_trophies = df_trophies[['Club', 'UCL', 'UEL', 'CWC', 'USC']]
 # so I want to drop them. I refer to league since each row has one.
 df_matches = df_matches.dropna(subset=['league'])
 
-##########################################################################################################################
-##########################################################################################################################
-##                                           PHASE 1: MERGE MATCHES & LEAGUES                                           ##
-##########################################################################################################################
-##########################################################################################################################
+# Since I have datasets with data from multiple seasons, I decided to analyze
+# only the period of time corresponding to the intersection between the
+# available seasons. So I want to keep only rows referring to seasons between
+# 2010/2011 and 2018/2019 in the various datasets.
+
+# Take the starting year of the season for each row and store it to use it as a filter.
+df_matches['season_start'] = df_matches['season'].str.extract(r'(\d{4})').astype(int)
+df_matches = df_matches[(df_matches['season_start'] >= 2010) & (df_matches['season_start'] <= 2018)]
+df_matches.drop(columns='season_start', inplace=True)
+# Do the same thing for the stats dataframe.
+df_stats['season_start'] = df_stats['season'].str.extract(r'(\d{4})').astype(int)
+df_stats = df_stats[(df_stats['season_start'] >= 2010) & (df_stats['season_start'] <= 2018)]
+df_stats.drop(columns='season_start', inplace=True)
+# Problem: df_matches has the year written as '2010/2011', while df_stats uses a format like '2010-2011'.
+# Since I will need to join on the season, I need to uniform the format of the two dataframes,
+# and I will do that by transforming the hyphen (-) into a slash (/).
+df_stats['season'] = df_stats['season'].str.replace('-', '/')
 
 # Problem: matches database uses 'Primera División' as name to identify 'La Liga', which
 # is part of the official name, but not the known and common used one.
 # I want to substitute that value with 'La Liga' to have a more known name and easier joins.
 df_matches.loc[df_matches['league']=='Primera División', 'league'] = 'La Liga'
+# Same thing for stats database and Bundesliga.
+df_stats.loc[df_stats['competition']=='Fußball-Bundesliga', 'competition'] = 'Bundesliga'
+
+##########################################################################################################################
+##########################################################################################################################
+##                                           PHASE 1: MERGE MATCHES & LEAGUES                                           ##
+##########################################################################################################################
+##########################################################################################################################
 
 # Problem: leagues has a particular format with hyphens (-) in the names that gives problems
 # when one tries to match the leagues to perform join. The solution is to modify those names
@@ -120,3 +140,90 @@ df2 = df2.rename(columns={'matched_stadium': 'stadium',
                           'City': 'city',
                           'Capacity': 'capacity',
                           'Population': 'population'})
+
+##########################################################################################################################
+##########################################################################################################################
+##                                             PHASE 3: MERGE DF2 & STATS                                               ##
+##########################################################################################################################
+##########################################################################################################################
+
+# For each match tuple I have an away team, an home team, a league and a season. 
+# The idea is to add to each row 3 columns: final table position of the away team in that season,
+#                                           final table position of the home team in that season,
+#                                           league winner of such competition in that season.
+
+# There are a few clubs that are written so strangely in the matches dataset that they will
+# not find any match in df_stats. Since they are very few, I decided to adjust them manually.
+df2.replace({'Espanyol Barcelona': 'Espanyol'}, regex=True, inplace=True)
+df2.replace({'OGC Nizza': 'Nice'}, regex=True, inplace=True)
+df2.replace({'AS St. Etienne': 'Saint-Étienne'}, regex=True, inplace=True)
+df2.replace({'AC Florenz': 'Fiorentina'}, regex=True, inplace=True)
+df2.replace({'SSC Neapel': 'Napoli'}, regex=True, inplace=True)
+df2.replace({'Queens Park Rangers': 'QPR'}, regex=True, inplace=True)
+df2.replace({'FC Turin': 'Torino'}, regex=True, inplace=True)
+df2.replace({'Racing Straßburg': 'Strasbourg'}, regex=True, inplace=True)
+
+df3 = df2.copy()
+# Problem: again, different formats between the teams names. I need to use fuzzy matching.
+# This time I will substitute the original column with the matched values because those names
+# are much better for a database since they are more standard. Also, in the matches database
+# there are some matches with teams that played only play-out in Bundesliga, which I don't
+# really consider part of the season and in fact they are not even in the stats. In this
+# way I will drop the rows corresponding to such teams cause of null values (no match).
+team_names = df_stats['squad'].unique()
+def getHomeTeam(row):
+    home_team = row['home name']
+    league = row['league']
+    if pd.isnull(home_team) or pd.isnull(league): return None
+    match, score, _ = process.extractOne(home_team, team_names, scorer = fuzz.partial_ratio)
+    if score < 75: return None
+    # If the score is greater compare also the league.
+    matched_row = df_stats[df_stats['squad'] == match]
+    matched_league = matched_row.iloc[0]['competition']
+    return match if league == matched_league else None
+# Create a new column in the df2 database with the matched home team.
+df3['home team'] = df2.apply(getHomeTeam, axis=1)
+def getAwayTeam(row):
+    away_team = row['away name']
+    league = row['league']
+    if pd.isnull(away_team) or pd.isnull(league): return None
+    match, score, _ = process.extractOne(away_team, team_names, scorer = fuzz.partial_ratio)
+    if score < 75: return None
+    # If the score is greater compare also the league.
+    matched_row = df_stats[df_stats['squad'] == match]
+    matched_league = matched_row.iloc[0]['competition']
+    return match if league == matched_league else None
+# Create a new column in the df2 database with the matched home team.
+df3['away team'] = df2.apply(getAwayTeam, axis=1)
+# Drop the old columns to keep the new team names, then delete rows with no team.
+df3.drop(columns=['home name', 'away name'], inplace=True)
+df3 = df3.dropna(subset=['home team', 'away team'])
+
+# Now I can perform the actual joins to add to the dataframe the position
+# in the table of the respective season both for the home and the away team.
+df3 = df3.merge(df_stats, 
+                left_on=['league', 'season', 'home team'],
+                right_on=['competition', 'season', 'squad'],
+                how='left').rename(columns={'rank': 'home rank'}).drop(columns=['competition', 'squad'])
+df3 = df3.merge(df_stats, 
+                left_on=['league', 'season', 'away team'],
+                right_on=['competition', 'season', 'squad'],
+                how='left').rename(columns={'rank': 'away rank'}).drop(columns=['competition', 'squad'])
+
+# Add a column specifying the winner of that league in that season.
+# The winner of the league is the team occupying the rank n. 1 in that season.
+winners = df_stats[df_stats['rank'] == 1][['competition', 'season', 'squad']]
+winners = winners.rename(columns={
+    'competition': 'league',
+    'squad': 'league_winner'
+})
+# Merge into df3 on league and season to add the column league winner.
+df3 = df3.merge(winners, on=['league', 'season'], how='left')
+df3.to_csv('df3.csv', index=False)
+
+##########################################################################################################################
+##########################################################################################################################
+##                                            PHASE 4: MERGE DF3 & TROPHIES                                             ##
+##########################################################################################################################
+##########################################################################################################################
+
