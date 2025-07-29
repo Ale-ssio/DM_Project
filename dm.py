@@ -219,7 +219,6 @@ winners = winners.rename(columns={
 })
 # Merge into df3 on league and season to add the column league winner.
 df3 = df3.merge(winners, on=['league', 'season'], how='left')
-df3.to_csv('df3.csv', index=False)
 
 ##########################################################################################################################
 ##########################################################################################################################
@@ -227,3 +226,42 @@ df3.to_csv('df3.csv', index=False)
 ##########################################################################################################################
 ##########################################################################################################################
 
+# I checked for the fuzzy matching results before performing it, and there are a few teams
+# making troubles with the matches, so I need to modify their format again.
+df3.replace({"M'Gladbach": 'Borussia Mönchengladbach'}, regex=True, inplace=True)
+df3.replace({'Angers': 'Angers SCO'}, regex=True, inplace=True)
+df3.replace({'Paris S-G': 'Paris Saint-Germain'}, regex=True, inplace=True)
+df3.replace({'Eint Frankfurt': 'Eintracht Frankfurt'}, regex=True, inplace=True)
+# This time I performed the same thing of the previous phases but in the inverse way.
+# I used fuzzy matching to find matching in the accessory dataframe and then I joined on
+# the matched attributes. The reason is that there were some tricky matches in the other way,
+# like multiple df3 teams matching to one df_trophies club. In this way instead, for each
+# team that won something I look just for the most accurate match and then I fill the 
+# remaining teams with the  value 0 for each trophy.
+all_clubs = df3['home team'].unique()
+def getClub(club):
+    match, score, _ = process.extractOne(club, all_clubs, scorer = fuzz.partial_ratio)
+    return match if score > 90 else None
+df_trophies['matched club'] = df_trophies['Club'].apply(getClub)
+# Join on the home teams.
+df4 = df3.merge(df_trophies, 
+                left_on='home team',
+                right_on='matched club',
+                how='left').rename(columns={'UCL': 'UCL home',
+                                            'UEL': 'UEL home',
+                                            'CWC': 'CWC home',
+                                            'USC': 'USC home'}).drop(columns=['Club', 'matched club'])
+# Join on the away teams.
+df4 = df4.merge(df_trophies, 
+                left_on='away team',
+                right_on='matched club',
+                how='left').rename(columns={'UCL': 'UCL away',
+                                            'UEL': 'UEL away',
+                                            'CWC': 'CWC away',
+                                            'USC': 'USC away'}).drop(columns=['Club', 'matched club'])
+# For all the teams that were not in df_trophies, fill the number of won trophies with 0.
+trophy_columns = [
+    'UCL home', 'UEL home', 'CWC home', 'USC home',
+    'UCL away', 'UEL away', 'CWC away', 'USC away'
+]
+df4[trophy_columns] = df4[trophy_columns].fillna(0)
