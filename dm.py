@@ -1,10 +1,65 @@
 import pandas as pd
 import re
 from rapidfuzz import process, fuzz
+import psycopg2
+from sqlalchemy import create_engine
+
+##########################################################################################################################
+##########################################################################################################################
+##                                        POSTGRESQL DATABASE CONNECTION                                                ##
+##########################################################################################################################
+##########################################################################################################################
+
+# Database connection parameters.
+DB_CONFIG = {
+    'host': 'localhost',
+    'port': '5432',
+    'dbname': 'Reconciled_Data_Layer',
+    'user': 'postgres',
+    'password': 'biar'
+}
+
+# Function to connect to PostgreSQL database.
+def pgConnection():
+    try:
+        # Create a connection to interact with the database.
+        connection = psycopg2.connect(
+            dbname=DB_CONFIG['dbname'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port']
+        )
+        print("Testing PostgreSQL database connection...")
+        if connection:
+            print("✅ Database connection successful!")
+            return connection
+    except Exception as e:
+        print(f"❌ Database connection failed: {str(e)}")
+        return None
+
+# Testing the connection with the database before processing data.
+print("="*60)
+print("RECONCILED DATA LAYER")
+print("="*60)
+
+connection = pgConnection()
+if not connection:
+    print("Exiting due to database connection failure.")
+    exit(1)
+print("\n" + "="*60)
+print("STARTING DATA PROCESSING")
+print("="*60)
 
 # I want to build the RECONCILED DATA LAYER:
 # Traditional database, but integrated and cleaned,
 # built from all the data I have and hystorical data.
+
+##########################################################################################################################
+##########################################################################################################################
+##                                              PHASE 0: PREPROCESSING                                                  ##
+##########################################################################################################################
+##########################################################################################################################
 
 # First of all I load all my sources in pandas dataframes.
 df_matches = pd.read_csv('european_football_games.csv', low_memory=False)
@@ -12,8 +67,6 @@ df_leagues = pd.read_csv('football_data_competitions_clubs_players.csv')
 df_stats = pd.read_csv('big_5_european_football_leagues_teams_stats.csv')
 df_stadiums = pd.read_csv('football_stadiums.csv')
 df_trophies = pd.read_csv('european_football_soccer_clubs_on_google_SERPs.csv')
-
-# PREPROCESSING
 
 # Keep only the attributes I'm interested in, for each dataframe.
 df_matches = df_matches[['location', 'away coach', 'away goals', 'away name',
@@ -42,6 +95,7 @@ df_matches.drop(columns='season_start', inplace=True)
 df_stats['season_start'] = df_stats['season'].str.extract(r'(\d{4})').astype(int)
 df_stats = df_stats[(df_stats['season_start'] >= 2010) & (df_stats['season_start'] <= 2018)]
 df_stats.drop(columns='season_start', inplace=True)
+
 # Problem: df_matches has the year written as '2010/2011', while df_stats uses a format like '2010-2011'.
 # Since I will need to join on the season, I need to uniform the format of the two dataframes,
 # and I will do that by transforming the hyphen (-) into a slash (/).
@@ -127,11 +181,13 @@ df1['matched_stadium'] = df1.apply(getStadium, axis=1)
 # Merge using the matched stadium, then remove the useless columns.
 df2 = df1.merge(df_stadiums_unique, left_on='matched_stadium', right_on='Stadium', how='left')
 df2.drop(columns=['location', 'stadium', 'Stadium'], inplace=True)
+
 # I want also to merge on the country to assign to each one the respective population.
 df_population = df_stadiums[['Country', 'Population']]
 df_population = df_population.drop_duplicates()
 df2 = df2.merge(df_population, left_on='country_name', right_on='Country', how='left')
 df2.drop(columns=['Country'], inplace=True)
+
 # I kept the matched stadium column and renamed it because stadium is an optional dimension,
 # but it makes no sense to me to keep a stadium without the additional information, so
 # the rows who had no match will also have no stadium at all.
@@ -195,6 +251,7 @@ def getAwayTeam(row):
     return match if league == matched_league else None
 # Create a new column in the df2 database with the matched home team.
 df3['away team'] = df2.apply(getAwayTeam, axis=1)
+
 # Drop the old columns to keep the new team names, then delete rows with no team.
 df3.drop(columns=['home name', 'away name'], inplace=True)
 df3 = df3.dropna(subset=['home team', 'away team'])
@@ -217,6 +274,7 @@ winners = winners.rename(columns={
     'competition': 'league',
     'squad': 'league_winner'
 })
+
 # Merge into df3 on league and season to add the column league winner.
 df3 = df3.merge(winners, on=['league', 'season'], how='left')
 
@@ -232,6 +290,7 @@ df3.replace({"M'Gladbach": 'Borussia Mönchengladbach'}, regex=True, inplace=Tru
 df3.replace({'Angers': 'Angers SCO'}, regex=True, inplace=True)
 df3.replace({'Paris S-G': 'Paris Saint-Germain'}, regex=True, inplace=True)
 df3.replace({'Eint Frankfurt': 'Eintracht Frankfurt'}, regex=True, inplace=True)
+
 # This time I performed the same thing of the previous phases but in the inverse way.
 # I used fuzzy matching to find matching in the accessory dataframe and then I joined on
 # the matched attributes. The reason is that there were some tricky matches in the other way,
@@ -259,9 +318,48 @@ df4 = df4.merge(df_trophies,
                                             'UEL': 'UEL away',
                                             'CWC': 'CWC away',
                                             'USC': 'USC away'}).drop(columns=['Club', 'matched club'])
+
 # For all the teams that were not in df_trophies, fill the number of won trophies with 0.
 trophy_columns = [
     'UCL home', 'UEL home', 'CWC home', 'USC home',
     'UCL away', 'UEL away', 'CWC away', 'USC away'
 ]
 df4[trophy_columns] = df4[trophy_columns].fillna(0)
+
+##########################################################################################################################
+##########################################################################################################################
+##                                  PHASE 5: LOAD THE RECONCILED LAYER ON POSTGRESQL                                    ##
+##########################################################################################################################
+##########################################################################################################################
+
+# Load the reconciled data layer (df4) into PostgreSQL database in a 'football_matches' table.
+def load_to_postgresql():
+    try:
+        print("\n" + "="*60)
+        print("LOADING DATA TO POSTGRESQL")
+        print("="*60)
+        
+        # Final reconciled data layer I want to load in PostgreSQL.
+        rdl = df4.copy()
+        print(f"Loading {len(rdl)} records to PostgreSQL...")
+
+        user = DB_CONFIG['user']
+        password = DB_CONFIG['password']
+        host = DB_CONFIG['host']
+        port = DB_CONFIG['port']
+        dbname = DB_CONFIG['dbname']
+
+        # Create SQLAlchemy engine to interact with PostgreSQL.
+        engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}')
+        # Write the dataframe to PostgreSQL (replace table if it exists).
+        rdl.to_sql(
+            name='football_matches',
+            con=engine,
+            if_exists='replace',
+            index=False
+        )
+        print("✅ Data successfully loaded into table 'football_matches'!")
+    except Exception as e:
+        print(f"❌ Failed to load data into PostgreSQL: {e}")
+
+load_to_postgresql()
