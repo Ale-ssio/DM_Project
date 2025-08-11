@@ -69,9 +69,10 @@ df_stadiums = pd.read_csv('football_stadiums.csv')
 df_trophies = pd.read_csv('european_football_soccer_clubs_on_google_SERPs.csv')
 
 # Keep only the attributes I'm interested in, for each dataframe.
-df_matches = df_matches[['location', 'away coach', 'away goals', 'away name',
-                         'date', 'home coach', 'home goals', 'home name',
-                         'league', 'referee', 'season', 'stadium', 'visitor count']]
+df_matches = df_matches[['away coach', 'away goals', 'away name',
+                         'home coach', 'home goals', 'home name',
+                         'location', 'date', 'league', 'referee', 
+                         'season', 'stadium', 'visitor count']]
 df_leagues = df_leagues[['name', 'type', 'country_name']]
 df_stats = df_stats[['competition', 'season', 'rank', 'squad']]
 df_stadiums = df_stadiums[['Stadium', 'City', 'Capacity', 'Country', 'Population']]
@@ -79,8 +80,8 @@ df_trophies = df_trophies[['Club', 'UCL', 'UEL', 'CWC', 'USC']]
 
 # I noticed there are a couple of rows in df_matches with all null values.
 # Such rows are useless for the project since they offer no information,
-# so I want to drop them. I refer to league since each row has one.
-df_matches = df_matches.dropna(subset=['league'])
+# so I want to drop them. I refer to them by taking the column everyone needs to have.
+df_matches = df_matches.dropna(subset=['league', 'date'])
 
 # Since I have datasets with data from multiple seasons, I decided to analyze
 # only the period of time corresponding to the intersection between the
@@ -218,6 +219,7 @@ df2.replace({'SSC Neapel': 'Napoli'}, regex=True, inplace=True)
 df2.replace({'Queens Park Rangers': 'QPR'}, regex=True, inplace=True)
 df2.replace({'FC Turin': 'Torino'}, regex=True, inplace=True)
 df2.replace({'Racing Straßburg': 'Strasbourg'}, regex=True, inplace=True)
+df2.replace({'Gazélec FCO Ajaccio' : 'Gazélec'}, regex=True, inplace=True)
 
 df3 = df2.copy()
 # Problem: again, different formats between the teams names. I need to use fuzzy matching.
