@@ -1,0 +1,129 @@
+key_stadium,stadium_name,city,capacity
+1,Estadio José Rico Pérez,Alicante,29584
+2,Estadio La Rosaleda,Málaga,28963
+3,Estadi Ciutat de Valencia,Valencia,26354
+4,Estadio Anoeta,San Sebastian,32076
+5,Abanca-Riazor,La Coruńa,32660
+6,Estadio El Sardinero,Santander,22346
+7,Estadio Vicente Calderón,Madrid,54907
+8,Estadio Mestalla,Valencia,55000
+9,Estadio Santiago Bernabéu,Madrid,85454
+10,San Mamés Barria,Bilbao,53289
+11,Ramón Ramón Sánchez Pizjuán,Sevilla,42982
+12,White Hart Lane,London,32000
+13,Villa Park,Birmingham,42682
+14,Ewood Park,Blackburn,31154
+15,DW Stadium,Wigan,25138
+16,Stadium of Light,Sunderland,48707
+17,Molineux Stadium,Wolverhampton,32057
+18,Stamford Bridge,London,41631
+19,Anfield,Liverpool,53394
+20,Old Trafford,Manchester,74994
+21,Emirates Stadium,London,59867
+22,Goodison Park,Liverpool,39595
+23,The Hawthorns,West Bromwich,26688
+24,Boleyn Ground,London,35345
+25,St. James’ Park,Newcastle,52354
+26,Craven Cottage,London,25700
+27,Bloomfield Road,Blackpool,16220
+28,Wirsol Rhein-Neckar Arena,Sinsheim,30164
+29,Borussia Park,Moenchengladbach,54010
+30,HDI-Arena,Hanover,49951
+31,Signal Iduna Park,Dortmund,81359
+32,Fritz-Walter-Stadion,Kaiserslautern,49780
+33,Veltins Arena,Gelsenkirchen,62271
+34,Weserstadion,Bremen,42354
+35,Volkswagen Arena,Wolfsburg,30122
+36,Commerzbank Arena,Frankfurt nad Menem,51500
+37,Millerntor-Stadion,Hamburg,29546
+38,Mercedes-Benz Arena,Stuttgart,60441
+39,BayArena,Leverkusen,30210
+40,Stade de l’Abbe Deschamps,Auxerre,18541
+41,Stade Bollaert-Delelis,Lens,38223
+42,Orange Vélodrome,Marseille,67394
+43,Parc des Princes,Paris,47929
+44,Stade de la Mosson,Montpellier,32939
+45,Stade Francis-Le Blé,Brest,15305
+46,Stade Marcel Picot,Nancy,20087
+47,Estadio Carlos Tartiere,Oviedo,30500
+48,Stade Chaban-Delmas,Bordeaux,34327
+49,Stade Michel d’Ornano,Caen,20300
+50,Stade Louis II,Monaco,18523
+51,Stade du Moustoir,Lorient,18500
+52,Stadio San Nicola,Bari,58270
+53,Stadio Marc Antonio Bentegodi,Verona,39211
+54,Stadio Ennio Tardini,Parma,21473
+55,Stadio Renzo Barbera,Palermo,36349
+56,Stadio Artemio Franchi,Florence,47300
+57,Stadio Renato Dall’Ara,Bologna,39300
+58,Stadio Sant’Elia,Cagliari,16000
+59,Stadio Mario Rigamonti,Brescia,26072
+60,Stadio Angelo Massimino,Catania,20797
+61,Stadio Via del Mare,Lecce,36285
+62,Stadio San Paolo,Neapol,60240
+63,Estadio Benito Villamarín,Sevilla,60720
+64,Estadio Nuevo Los Cármenes,Granada,22524
+65,Loftus Road,London,18000
+66,Etihad Stadium,Manchester,55017
+67,Carrow Road,Norwich,27033
+68,Olympiastadion,Berlin,74475
+69,Stade François-Coty,Ajaccio,10500
+70,Stade Gaston-Gérard,Dijon,16288
+71,Parc des Sports d’Annecy,Annecy,15714
+72,Stade de France,Saint-Denis,81338
+73,Stadio Atleti Azzurri d’Italia,Bergamo,24726
+74,Stadio Silvio Piola,Novara,17875
+75,Stadio Nereo Rocco,Triest,28565
+76,Estadio José Zorrilla,Valladolid,26512
+77,Madejski Stadium,Reading,24161
+78,St. Mary’s Stadium,Southampton,32384
+79,Stade de l’Aube,Troyes,18200
+80,Stade Auguste-Delaune,Reims,21684
+81,Estadio Manuel Martinez Valero,Elche,36017
+82,Estadio El Sadar,Pamplona,18375
+83,Selhurst Park,London,25456
+84,Eintracht-Stadion,Braunschweig,23325
+85,Stade de la Beaujoire,Nantes,37473
+86,Stade de Roudourou,Guingamp,18197
+87,Stadio Armando Picchi,Livorno,19801
+88,Stadio Alberto Braglia,Modena,20507
+89,Mapei Stadium,Reggio Emilia,23717
+90,Estadio Nuevo  Arcángel,Cordoba,16600
+91,Coliseum Alfonso Pérez,Getafe,14478
+92,King Power Stadium,Leicester,32273
+93,Turf Moor,Burnley,21944
+94,Benteler-Arena,Paderborn,15000
+95,Schwarzwald-Stadion,Freiburg,25000
+96,Stadio Carlo Castellani,Empoli,16800
+97,Camp Nou,Barcelona,99354
+98,Estadio Gran Canaria,Las Palmas,31250
+99,Vitality Stadium,Bournemouth,11360
+100,Vicarage Road,Watford,21000
+101,Merck-Stadion am Böllenfalltor,Darmstadt,17468
+102,Audi-Sportpark,Ingolstadt,15445
+103,Volksparkstadion,Hamburg,57274
+104,WWK Arena,Augsburg,30660
+105,Stade Geoffroy-Guichard,Saint-Étienne,41965
+106,Stade Pierre Mauroy,Lille,50157
+107,Stadium de Toulouse,Toulouse,33300
+108,Roazhon Park,Rennes,29778
+109,Stadio Olimpico,Rome,70634
+110,Estadio de Mendizorrotza,Vitoria-Gasteiz,19840
+111,Estadio de la Cerámica,Villarreal,24890
+112,Riverside Stadium,Middlesbrough,33746
+113,bet365 Stadium,Stoke-on-Trent,30089
+114,London Stadium,London,60000
+115,Red Bull Arena,Leipzig,44345
+116,Matmut Atlantique,Bordeaux,42115
+117,Stade Saint Symphorien,Metz,26671
+118,Allianz Stadium,Turin,41507
+119,Dacia Arena,Udine,25144
+120,Wanda Metropolitano,Madrid,67703
+121,John Smith’s Stadium,Huddersfield,24169
+122,Wembley,London,90652
+123,Stade de la Meinau,Strasburg,26500
+124,Stadio Paolo Mazza,Ferrara,7000
+125,Sardegna Arena,Cagliari,16416
+126,Merkur Spiel-Arena,Düsseldorf,54600
+127,Groupama Stadium,Lyon,59286
+128,Stadio Benito Stirpe,Frosinone,16125

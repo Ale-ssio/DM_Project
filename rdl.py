@@ -3,6 +3,7 @@ import re
 from rapidfuzz import process, fuzz
 import psycopg2
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 
 ##########################################################################################################################
 ##########################################################################################################################
@@ -20,33 +21,14 @@ DB_CONFIG = {
 }
 
 # Function to connect to PostgreSQL database.
-def pgConnection():
-    try:
-        # Create a connection to interact with the database.
-        connection = psycopg2.connect(
-            dbname=DB_CONFIG['dbname'],
-            user=DB_CONFIG['user'],
-            password=DB_CONFIG['password'],
-            host=DB_CONFIG['host'],
-            port=DB_CONFIG['port']
-        )
-        print("Testing PostgreSQL database connection...")
-        if connection:
-            print("✅ Database connection successful!")
-            return connection
-    except Exception as e:
-        print(f"❌ Database connection failed: {str(e)}")
-        return None
-
-# Testing the connection with the database before processing data.
-print("="*60)
-print("RECONCILED DATA LAYER")
-print("="*60)
-
-connection = pgConnection()
-if not connection:
-    print("Exiting due to database connection failure.")
+try:
+    engine = create_engine(f"postgresql+psycopg2://{DB_CONFIG['user']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}")
+    with engine.connect() as conn:
+        print("✅ Database connection successful!")
+except OperationalError as e:
+    print(f"❌ Database connection failed: {e}")
     exit(1)
+
 print("\n" + "="*60)
 print("STARTING DATA PROCESSING")
 print("="*60)
@@ -62,11 +44,11 @@ print("="*60)
 ##########################################################################################################################
 
 # First of all I load all my sources in pandas dataframes.
-df_matches = pd.read_csv('european_football_games.csv', low_memory=False)
-df_leagues = pd.read_csv('football_data_competitions_clubs_players.csv')
-df_stats = pd.read_csv('big_5_european_football_leagues_teams_stats.csv')
-df_stadiums = pd.read_csv('football_stadiums.csv')
-df_trophies = pd.read_csv('european_football_soccer_clubs_on_google_SERPs.csv')
+df_matches = pd.read_csv('./sources/european_football_games.csv', low_memory=False)
+df_leagues = pd.read_csv('./sources/football_data_competitions_clubs_players.csv')
+df_stats = pd.read_csv('./sources/big_5_european_football_leagues_teams_stats.csv')
+df_stadiums = pd.read_csv('./sources/football_stadiums.csv')
+df_trophies = pd.read_csv('./sources/european_football_soccer_clubs_on_google_SERPs.csv')
 
 # Keep only the attributes I'm interested in, for each dataframe.
 df_matches = df_matches[['away coach', 'away goals', 'away name',
@@ -109,6 +91,13 @@ df_matches.loc[df_matches['league']=='Primera División', 'league'] = 'La Liga'
 # Same thing for stats database and Bundesliga.
 df_stats.loc[df_stats['competition']=='Fußball-Bundesliga', 'competition'] = 'Bundesliga'
 
+# Debug.
+df_matches.to_csv('./debug/df_matches.csv', index=False)
+df_leagues.to_csv('./debug/df_leagues.csv', index=False)
+df_stats.to_csv('./debug/df_stats.csv', index=False)
+df_stadiums.to_csv('./debug/df_stadiums.csv', index=False)
+df_trophies.to_csv('./debug/df_trophies.csv', index=False)
+
 ##########################################################################################################################
 ##########################################################################################################################
 ##                                           PHASE 1: MERGE MATCHES & LEAGUES                                           ##
@@ -140,6 +129,9 @@ df_matches['matched_league'] = df_matches['league'].str.lower().apply(getLeague)
 # Merge using the normalized matched league name, then remove the useless columns.
 df1 = df_matches.merge(df_leagues, left_on='matched_league', right_on='name', how='left')
 df1.drop(columns=['matched_league', 'name'], inplace=True)
+
+# Debug.
+df1.to_csv('./debug/df1.csv', index=False)
 
 ##########################################################################################################################
 ##########################################################################################################################
@@ -197,6 +189,9 @@ df2 = df2.rename(columns={'matched_stadium': 'stadium',
                           'City': 'city',
                           'Capacity': 'capacity',
                           'Population': 'population'})
+
+# Debug.
+df2.to_csv('./debug/df2.csv', index=False)
 
 ##########################################################################################################################
 ##########################################################################################################################
@@ -280,6 +275,9 @@ winners = winners.rename(columns={
 # Merge into df3 on league and season to add the column league winner.
 df3 = df3.merge(winners, on=['league', 'season'], how='left')
 
+# Debug.
+df3.to_csv('./debug/df3.csv', index=False)
+
 ##########################################################################################################################
 ##########################################################################################################################
 ##                                            PHASE 4: MERGE DF3 & TROPHIES                                             ##
@@ -328,6 +326,9 @@ trophy_columns = [
 ]
 df4[trophy_columns] = df4[trophy_columns].fillna(0)
 
+# Debug.
+df4.to_csv('./debug/df4.csv', index=False)
+
 ##########################################################################################################################
 ##########################################################################################################################
 ##                                  PHASE 5: LOAD THE RECONCILED LAYER ON POSTGRESQL                                    ##
@@ -343,16 +344,19 @@ def load_to_postgresql():
         
         # Final reconciled data layer I want to load in PostgreSQL.
         rdl = df4.copy()
+        # I have the date, but I will need also the columns for the 
+        # month and the year themselves, so I prepare them now.
+        rdl['date'] = pd.to_datetime(rdl['date'], format='%d.%m.%Y', errors='coerce')
+        # Create month and year columns
+        rdl['month'] = rdl['date'].dt.strftime('%Y-%m')
+        rdl['year'] = rdl['date'].dt.year
+        rdl.to_csv("final.csv", index=False)
+
+        # Debug.
+        rdl.to_csv('./debug/rdl.csv', index=False)
+        
         print(f"Loading {len(rdl)} records to PostgreSQL...")
 
-        user = DB_CONFIG['user']
-        password = DB_CONFIG['password']
-        host = DB_CONFIG['host']
-        port = DB_CONFIG['port']
-        dbname = DB_CONFIG['dbname']
-
-        # Create SQLAlchemy engine to interact with PostgreSQL.
-        engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}')
         # Write the dataframe to PostgreSQL (replace table if it exists).
         rdl.to_sql(
             name='football_matches',
