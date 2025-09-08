@@ -62,7 +62,7 @@ df_trophies = df_trophies[['Club', 'UCL', 'UEL', 'CWC', 'USC']]
 
 # I noticed there are a couple of rows in df_matches with all null values.
 # Such rows are useless for the project since they offer no information,
-# so I want to drop them. I refer to them by taking the column everyone needs to have.
+# so I want to drop them. I refer to them by taking the columns everyone needs to have.
 df_matches = df_matches.dropna(subset=['league', 'date'])
 
 # Since I have datasets with data from multiple seasons, I decided to analyze
@@ -156,7 +156,7 @@ stadium_names = df_stadiums_unique['Stadium'].unique()
 # Define a function that, given a row (from df1), checks for the most similar
 # stadium in the stored ones and returns the most accurate match only if it has a score > 80.
 def getStadium(row):
-    # I want to get also the location because there are some comlex cases where I want to compare
+    # I want to get also the location because there are some complex cases where I want to compare
     # also the city to be sure of the matching.
     stadium = row['stadium']
     location = row['location']
